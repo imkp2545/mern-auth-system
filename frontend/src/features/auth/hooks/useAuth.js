@@ -1,0 +1,144 @@
+import { useEffect, useState } from 'react'
+import {
+  AUTH_MODES,
+  AUTH_STORAGE_KEY,
+  INITIAL_FORMS,
+} from '../constants/auth.constants'
+import { authService } from '../services/authService'
+
+function getStoredUser() {
+  const savedUser = localStorage.getItem(AUTH_STORAGE_KEY)
+
+  if (!savedUser) {
+    return null
+  }
+
+  try {
+    return JSON.parse(savedUser)
+  } catch {
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    return null
+  }
+}
+
+export function useAuth() {
+  const [mode, setMode] = useState(AUTH_MODES.LOGIN)
+  const [forms, setForms] = useState(INITIAL_FORMS)
+  const [authUser, setAuthUser] = useState(getStoredUser)
+  const [profile, setProfile] = useState(null)
+  const [status, setStatus] = useState({
+    type: 'idle',
+    message: 'Create an account or sign in to test the protected route.',
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
+
+  useEffect(() => {
+    if (authUser?.token) {
+      fetchProfile(authUser)
+    }
+  }, [])
+
+  const updateField = (formName, field, value) => {
+    setForms((current) => ({
+      ...current,
+      [formName]: {
+        ...current[formName],
+        [field]: value,
+      },
+    }))
+  }
+
+  const persistUser = (user) => {
+    setAuthUser(user)
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
+  }
+
+  const logout = () => {
+    localStorage.removeItem(AUTH_STORAGE_KEY)
+    setAuthUser(null)
+    setProfile(null)
+    setStatus({
+      type: 'idle',
+      message: 'You are logged out. Sign in again to call the protected API.',
+    })
+  }
+
+  const fetchProfile = async (user = authUser) => {
+    if (!user?.token) {
+      return
+    }
+
+    setIsLoadingProfile(true)
+
+    try {
+      const data = await authService.getProfile(user.token)
+      setProfile(data)
+      setStatus({
+        type: 'success',
+        message: data.message,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to fetch profile'
+
+      setProfile(null)
+      setStatus({
+        type: 'error',
+        message,
+      })
+
+      if (message === 'Token failed' || message === 'No token, not authorized') {
+        logout()
+      }
+    } finally {
+      setIsLoadingProfile(false)
+    }
+  }
+
+  const submitAuth = async () => {
+    const isRegisterMode = mode === AUTH_MODES.REGISTER
+    const action = isRegisterMode ? authService.register : authService.login
+
+    setIsSubmitting(true)
+    setStatus({
+      type: 'pending',
+      message: isRegisterMode ? 'Creating your account...' : 'Signing you in...',
+    })
+
+    try {
+      const user = await action(forms[mode])
+      persistUser(user)
+      setForms(INITIAL_FORMS)
+      setMode(AUTH_MODES.LOGIN)
+      setStatus({
+        type: 'success',
+        message: isRegisterMode
+          ? 'Registration successful. Your token has been stored.'
+          : 'Login successful. Your token has been stored.',
+      })
+      await fetchProfile(user)
+    } catch (error) {
+      setStatus({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Authentication failed',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return {
+    mode,
+    setMode,
+    forms,
+    authUser,
+    profile,
+    status,
+    isSubmitting,
+    isLoadingProfile,
+    updateField,
+    submitAuth,
+    fetchProfile,
+    logout,
+  }
+}
