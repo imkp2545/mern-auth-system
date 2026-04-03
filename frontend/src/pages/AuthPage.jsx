@@ -3,7 +3,10 @@ import AuthForm from '../features/auth/components/AuthForm'
 import ProfilePanel from '../features/auth/components/ProfilePanel'
 import { AUTH_MODES } from '../features/auth/constants/auth.constants'
 import { useAuth } from '../features/auth/hooks/useAuth'
+import OnboardingFlowPage from './OnboardingFlowPage'
 import './AuthPage.css'
+
+const ONBOARDING_STORAGE_KEY = 'auth-app-onboarding-complete'
 
 function AuthPage() {
   const {
@@ -11,6 +14,7 @@ function AuthPage() {
     setMode,
     forms,
     authUser,
+    lastAuthMode,
     profile,
     status,
     isSubmitting,
@@ -23,6 +27,10 @@ function AuthPage() {
 
   const isAuthenticated = Boolean(authUser?.token)
   const isRegisterMode = mode === AUTH_MODES.REGISTER
+  const [onboardingStage, setOnboardingStage] = useState(() => {
+    const hasCompleted = localStorage.getItem(ONBOARDING_STORAGE_KEY) === 'true'
+    return hasCompleted ? 'profile' : 'greeting'
+  })
   const [heroPointerStyle, setHeroPointerStyle] = useState({
     '--mx': '50%',
     '--my': '50%',
@@ -56,41 +64,46 @@ function AuthPage() {
     })
   }
 
+  const hasOnboardingCompleted = onboardingStage === 'profile'
+  const shouldShowOnboarding =
+    isAuthenticated &&
+    lastAuthMode === AUTH_MODES.REGISTER &&
+    !hasOnboardingCompleted
+
+  const finishOnboarding = () => {
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true')
+    setOnboardingStage('profile')
+  }
+
+  const restartOnboarding = () => {
+    localStorage.removeItem(ONBOARDING_STORAGE_KEY)
+    setOnboardingStage('greeting')
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem(ONBOARDING_STORAGE_KEY)
+    setOnboardingStage('greeting')
+    logout()
+  }
+
   return (
     <main className="auth-shell">
-      <header className="navbar">
-        <div className="brand-block">
-          <div>
-            <p className="brand-name">AuthSpace</p>
-            <p className="brand-tag">Simple and secure account experience</p>
+      {isAuthenticated && !shouldShowOnboarding ? (
+        <header className="navbar">
+          <div className="brand-block">
+            <div>
+              <p className="brand-name">AuthSpace</p>
+              <p className="brand-tag">Simple and secure account experience</p>
+            </div>
           </div>
-        </div>
 
-        <nav className="nav-actions">
-          {!isAuthenticated ? (
-            <>
-              <button
-                type="button"
-                className={mode === 'login' ? 'nav-button active' : 'nav-button'}
-                onClick={() => setMode('login')}
-              >
-                Login
-              </button>
-              <button
-                type="button"
-                className={mode === 'register' ? 'nav-button active' : 'nav-button'}
-                onClick={() => setMode('register')}
-              >
-                Signup
-              </button>
-            </>
-          ) : (
-            <button type="button" className="nav-button active" onClick={logout}>
+          <nav className="nav-actions">
+            <button type="button" className="nav-button active" onClick={handleLogout}>
               Logout
             </button>
-          )}
-        </nav>
-      </header>
+          </nav>
+        </header>
+      ) : null}
 
       {!isAuthenticated ? (
         <section className="workspace auth-layout">
@@ -150,35 +163,56 @@ function AuthPage() {
           </div>
         </section>
       ) : (
-        <section className="workspace profile-layout">
-          <div className="profile-side-copy">
-            <p className="eyebrow">Account Area</p>
-            <h1>Manage your account with clarity and confidence.</h1>
-            <p className="lede">
-              This screen gives the user a more professional account summary with
-              cleaner hierarchy, better spacing, and clearer actions.
-            </p>
+        <>
+          {shouldShowOnboarding ? (
+            <OnboardingFlowPage
+              userName={authUser?.name}
+              onComplete={finishOnboarding}
+            />
+          ) : null}
 
-            <div className="profile-side-points">
-              <div className="side-point">
-                <span className="summary-label">Overview</span>
-                <strong>Quick access to core account details</strong>
-              </div>
-              <div className="side-point">
-                <span className="summary-label">Security</span>
-                <strong>Protected route status and session awareness</strong>
-              </div>
-            </div>
-          </div>
+          {!shouldShowOnboarding ? (
+            <section className="workspace profile-layout">
+              <div className="profile-side-copy">
+                <p className="eyebrow">Account Area</p>
+                <h1>Manage your account with clarity and confidence.</h1>
+                <p className="lede">
+                  You have completed onboarding and landed on the personalized
+                  profile area with the same polished visual direction.
+                </p>
 
-          <ProfilePanel
-            authUser={authUser}
-            profile={profile}
-            isLoadingProfile={isLoadingProfile}
-            onFetchProfile={fetchProfile}
-            onLogout={logout}
-          />
-        </section>
+                <div className="profile-side-points">
+                  <div className="side-point">
+                    <span className="summary-label">Onboarding</span>
+                    <strong>Completed with five guided responses</strong>
+                  </div>
+                  <div className="side-point">
+                    <span className="summary-label">Experience</span>
+                    <strong>Greeting, questions, ready screen, then profile</strong>
+                  </div>
+                </div>
+
+                {lastAuthMode === AUTH_MODES.REGISTER ? (
+                  <button
+                    type="button"
+                    className="profile-button profile-button-secondary profile-restart-button"
+                    onClick={restartOnboarding}
+                  >
+                    Replay onboarding
+                  </button>
+                ) : null}
+              </div>
+
+              <ProfilePanel
+                authUser={authUser}
+                profile={profile}
+                isLoadingProfile={isLoadingProfile}
+                onFetchProfile={fetchProfile}
+                onLogout={handleLogout}
+              />
+            </section>
+          ) : null}
+        </>
       )}
     </main>
   )

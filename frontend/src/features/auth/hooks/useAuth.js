@@ -6,6 +6,8 @@ import {
 } from '../constants/auth.constants'
 import { authService } from '../services/authService'
 
+const LAST_AUTH_MODE_KEY = 'auth-app-last-auth-mode'
+
 function getStoredUser() {
   const savedUser = localStorage.getItem(AUTH_STORAGE_KEY)
 
@@ -25,6 +27,9 @@ export function useAuth() {
   const [mode, setMode] = useState(AUTH_MODES.LOGIN)
   const [forms, setForms] = useState(INITIAL_FORMS)
   const [authUser, setAuthUser] = useState(getStoredUser)
+  const [lastAuthMode, setLastAuthMode] = useState(
+    () => localStorage.getItem(LAST_AUTH_MODE_KEY) || AUTH_MODES.LOGIN,
+  )
   const [profile, setProfile] = useState(null)
   const [status, setStatus] = useState({
     type: 'idle',
@@ -56,7 +61,9 @@ export function useAuth() {
 
   const logout = () => {
     localStorage.removeItem(AUTH_STORAGE_KEY)
+    localStorage.removeItem(LAST_AUTH_MODE_KEY)
     setAuthUser(null)
+    setLastAuthMode(AUTH_MODES.LOGIN)
     setProfile(null)
     setStatus({
       type: 'idle',
@@ -108,6 +115,8 @@ export function useAuth() {
     try {
       const user = await action(forms[mode])
       persistUser(user)
+      localStorage.setItem(LAST_AUTH_MODE_KEY, mode)
+      setLastAuthMode(mode)
       setForms(INITIAL_FORMS)
       setMode(AUTH_MODES.LOGIN)
       setStatus({
@@ -132,6 +141,7 @@ export function useAuth() {
     setMode,
     forms,
     authUser,
+    lastAuthMode,
     profile,
     status,
     isSubmitting,
