@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { AUTH_MODES } from '../constants/auth.constants'
+import GoogleAuthButton from './GoogleAuthButton'
 import StatusBanner from './StatusBanner'
 
 function AuthForm({
@@ -10,6 +11,8 @@ function AuthForm({
   onModeChange,
   onFieldChange,
   onSubmit,
+  onGoogleAuth,
+  onGoogleError,
 }) {
   const activeForm = forms[mode]
   const isRegisterMode = mode === AUTH_MODES.REGISTER
@@ -106,6 +109,19 @@ function AuthForm({
               : 'Login'}
         </button>
       </form>
+
+      <div className="auth-divider" aria-hidden="true">
+        <span></span>
+        <p>or continue with</p>
+        <span></span>
+      </div>
+
+      <GoogleAuthButton
+        mode={mode}
+        disabled={isSubmitting}
+        onCredential={onGoogleAuth}
+        onError={onGoogleError}
+      />
 
       <div className="auth-status-wrap">
         <StatusBanner status={status} />

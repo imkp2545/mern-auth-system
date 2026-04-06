@@ -33,7 +33,7 @@ export function useAuth() {
   const [profile, setProfile] = useState(null)
   const [status, setStatus] = useState({
     type: 'idle',
-    message: 'Create an account or sign in to test the protected route.',
+    message: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
@@ -59,6 +59,18 @@ export function useAuth() {
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user))
   }
 
+  const syncAuthUser = (updates) => {
+    setAuthUser((current) => {
+      const nextUser = {
+        ...current,
+        ...updates,
+      }
+
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextUser))
+      return nextUser
+    })
+  }
+
   const logout = () => {
     localStorage.removeItem(AUTH_STORAGE_KEY)
     localStorage.removeItem(LAST_AUTH_MODE_KEY)
@@ -71,7 +83,9 @@ export function useAuth() {
     })
   }
 
-  const fetchProfile = async (user = authUser) => {
+  const fetchProfile = async (user = authUser, options = {}) => {
+    const { shouldUpdateStatus = true } = options
+
     if (!user?.token) {
       return
     }
@@ -81,10 +95,15 @@ export function useAuth() {
     try {
       const data = await authService.getProfile(user.token)
       setProfile(data)
-      setStatus({
-        type: 'success',
-        message: data.message,
-      })
+      if (data?.user) {
+        syncAuthUser(data.user)
+      }
+      if (shouldUpdateStatus) {
+        setStatus({
+          type: 'success',
+          message: data.message,
+        })
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to fetch profile'
 
@@ -125,7 +144,7 @@ export function useAuth() {
           ? 'Registration successful. Your token has been stored.'
           : 'Login successful. Your token has been stored.',
       })
-      await fetchProfile(user)
+      await fetchProfile(user, { shouldUpdateStatus: false })
     } catch (error) {
       setStatus({
         type: 'error',
@@ -134,6 +153,62 @@ export function useAuth() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const submitGoogleAuth = async (credential) => {
+    if (!credential) {
+      setStatus({
+        type: 'error',
+        message: 'Google sign-in did not return a credential.',
+      })
+      return
+    }
+
+    const isRegisterMode = mode === AUTH_MODES.REGISTER
+
+    setIsSubmitting(true)
+    setStatus({
+      type: 'pending',
+      message: isRegisterMode
+        ? 'Creating your account with Google...'
+        : 'Signing you in with Google...',
+    })
+
+    try {
+      const user = await authService.googleAuth({
+        credential,
+        mode,
+      })
+      persistUser(user)
+      const resolvedAuthMode = user.isNewGoogleUser ? AUTH_MODES.REGISTER : mode
+      localStorage.setItem(LAST_AUTH_MODE_KEY, resolvedAuthMode)
+      setLastAuthMode(resolvedAuthMode)
+      setForms(INITIAL_FORMS)
+      setMode(AUTH_MODES.LOGIN)
+      setStatus({
+        type: 'success',
+        message:
+          user.message ||
+          (isRegisterMode
+            ? 'Google sign-up successful.'
+            : 'Google login successful.'),
+      })
+      await fetchProfile(user, { shouldUpdateStatus: false })
+    } catch (error) {
+      setStatus({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Google authentication failed',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const reportGoogleAuthError = (message) => {
+    setStatus({
+      type: 'error',
+      message: message || 'Google authentication failed',
+    })
   }
 
   return {
@@ -148,7 +223,10 @@ export function useAuth() {
     isLoadingProfile,
     updateField,
     submitAuth,
+    submitGoogleAuth,
+    reportGoogleAuthError,
     fetchProfile,
+    syncAuthUser,
     logout,
   }
 }

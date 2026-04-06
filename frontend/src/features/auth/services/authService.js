@@ -39,4 +39,10 @@ export const authService = {
       token,
     })
   },
+  googleAuth(payload) {
+    return request('/api/auth/google', {
+      method: 'POST',
+      body: payload,
+    })
+  },
 }
