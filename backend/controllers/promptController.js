@@ -26,6 +26,7 @@ export const getCurrentUserPromptHistory = async (req, res) => {
 export const generatePromptForCurrentUser = async (req, res) => {
   try {
     const prompt = req.body?.prompt?.trim();
+    const type = req.body?.type;
 
     if (!prompt) {
       return res.status(400).json({ message: "Prompt is required" });
@@ -37,12 +38,14 @@ export const generatePromptForCurrentUser = async (req, res) => {
       });
     }
 
-    const generatedResult = await generateGeminiResponse(prompt);
+    const generatedResult = await generateGeminiResponse(prompt, { type });
 
     const historyEntry = await PromptHistory.create({
       userId: req.user.id,
       prompt,
       response: generatedResult.response,
+      images: generatedResult.images,
+      responseType: generatedResult.responseType,
       model: generatedResult.model,
     });
 
@@ -51,9 +54,31 @@ export const generatePromptForCurrentUser = async (req, res) => {
       historyEntry,
     });
   } catch (error) {
-    res.status(500).json({
-      message:
-        error instanceof Error ? error.message : "Unable to generate response",
-    });
+    const message =
+      error instanceof Error ? error.message : "Unable to generate response";
+    const lowerMessage = message.toLowerCase();
+    let statusCode = 500;
+
+    if (
+      lowerMessage.includes("not configured") ||
+      lowerMessage.includes("missing inference providers permission") ||
+      lowerMessage.includes("invalid hugging face token")
+    ) {
+      statusCode = 400;
+    } else if (
+      lowerMessage.includes("rate limit") ||
+      lowerMessage.includes("quota")
+    ) {
+      statusCode = 429;
+    } else if (lowerMessage.includes("model is loading")) {
+      statusCode = 503;
+    } else if (
+      lowerMessage.includes("gemini request failed") ||
+      lowerMessage.includes("hugging face")
+    ) {
+      statusCode = 502;
+    }
+
+    res.status(statusCode).json({ message });
   }
 };

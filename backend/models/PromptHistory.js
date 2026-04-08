@@ -16,12 +16,22 @@ const PromptHistorySchema = new mongoose.Schema(
     },
     response: {
       type: String,
-      required: true,
+      default: "",
+      trim: true,
+    },
+    images: {
+      type: [String],
+      default: [],
+    },
+    responseType: {
+      type: String,
+      enum: ["text", "image", "mixed"],
+      default: "text",
       trim: true,
     },
     model: {
       type: String,
-      default: "gemini-2.0-flash",
+      default: "gemini-2.5-flash",
       trim: true,
     },
   },

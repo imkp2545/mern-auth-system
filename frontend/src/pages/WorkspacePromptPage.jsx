@@ -4,6 +4,7 @@ function WorkspacePromptPage({
   profile,
   promptDraft,
   promptHistory,
+  pendingPrompt,
   selectedHistoryEntry,
   isGeneratingPrompt,
   promptStatus,
@@ -16,6 +17,7 @@ function WorkspacePromptPage({
       profile={profile}
       promptDraft={promptDraft}
       promptHistory={promptHistory}
+      pendingPrompt={pendingPrompt}
       selectedHistoryEntry={selectedHistoryEntry}
       isGeneratingPrompt={isGeneratingPrompt}
       promptStatus={promptStatus}

@@ -21,6 +21,7 @@ function WorkspacePage({ authUser, onUserSync, onLogout }) {
   const {
     promptHistory,
     promptDraft,
+    pendingPrompt,
     setPromptDraft,
     selectedHistoryEntry,
     isLoadingPromptHistory,
@@ -131,6 +132,7 @@ function WorkspacePage({ authUser, onUserSync, onLogout }) {
             profile={profile}
             promptDraft={promptDraft}
             promptHistory={promptHistory}
+            pendingPrompt={pendingPrompt}
             selectedHistoryEntry={selectedHistoryEntry}
             isGeneratingPrompt={isGeneratingPrompt}
             promptStatus={promptStatus}

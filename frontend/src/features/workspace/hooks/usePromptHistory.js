@@ -1,9 +1,27 @@
 import { useEffect, useState } from 'react'
 import { promptService } from '../services/promptService'
 
+const IMAGE_PROMPT_REGEX =
+  /\b(image|picture|photo|illustration|art|logo|icon|poster|wallpaper|draw|sketch|render)\b/i
+const CODE_REVIEW_PROMPT_REGEX =
+  /\b(code review|review code|analyze code|audit code|check this code)\b/i
+
+function resolvePromptType(prompt) {
+  if (IMAGE_PROMPT_REGEX.test(prompt)) {
+    return 'image'
+  }
+
+  if (CODE_REVIEW_PROMPT_REGEX.test(prompt)) {
+    return 'code-review'
+  }
+
+  return 'text'
+}
+
 export function usePromptHistory(authUser) {
   const [promptHistory, setPromptHistory] = useState([])
   const [promptDraft, setPromptDraft] = useState('')
+  const [pendingPrompt, setPendingPrompt] = useState(null)
   const [selectedHistoryEntry, setSelectedHistoryEntry] = useState(null)
   const [isLoadingPromptHistory, setIsLoadingPromptHistory] = useState(true)
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false)
@@ -17,6 +35,7 @@ export function usePromptHistory(authUser) {
 
     async function loadPromptHistory() {
       if (!authUser?.token) {
+        setPendingPrompt(null)
         setIsLoadingPromptHistory(false)
         return
       }
@@ -33,6 +52,7 @@ export function usePromptHistory(authUser) {
         const history = data.history || []
 
         setPromptHistory(history)
+        setPendingPrompt(null)
         setSelectedHistoryEntry(history[0] || null)
         setPromptStatus({
           type: 'idle',
@@ -74,24 +94,40 @@ export function usePromptHistory(authUser) {
       return
     }
 
+    const pendingEntry = {
+      _id: `pending-${Date.now()}`,
+      prompt,
+      response: '',
+      images: [],
+      responseType: 'text',
+      createdAt: new Date().toISOString(),
+      isPending: true,
+    }
+
     setIsGeneratingPrompt(true)
+    setPendingPrompt(pendingEntry)
+    setPromptDraft('')
     setPromptStatus({
       type: 'pending',
       message: 'Generating your response...',
     })
 
     try {
-      const data = await promptService.generatePrompt(authUser.token, { prompt })
+      const promptType = resolvePromptType(prompt)
+      const payload = promptType === 'text' ? { prompt } : { prompt, type: promptType }
+      const data = await promptService.generatePrompt(authUser.token, payload)
       const nextEntry = data.historyEntry
 
       setPromptHistory((current) => [nextEntry, ...current])
       setSelectedHistoryEntry(nextEntry)
-      setPromptDraft('')
+      setPendingPrompt(null)
       setPromptStatus({
         type: 'success',
         message: data.message || 'Prompt generated successfully.',
       })
     } catch (error) {
+      setPendingPrompt(null)
+      setPromptDraft(prompt)
       setPromptStatus({
         type: 'error',
         message:
@@ -105,6 +141,7 @@ export function usePromptHistory(authUser) {
   return {
     promptHistory,
     promptDraft,
+    pendingPrompt,
     setPromptDraft,
     selectedHistoryEntry,
     isLoadingPromptHistory,
