@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import WorkspaceProfileForm from '../features/workspace/components/WorkspaceProfileForm'
-import { useTasks } from '../features/workspace/hooks/useTasks'
+import { usePromptHistory } from '../features/workspace/hooks/usePromptHistory'
 import { useWorkspaceProfile } from '../features/workspace/hooks/useWorkspaceProfile'
 import WorkspacePromptPage from './WorkspacePromptPage'
 import './WorkspacePage.css'
@@ -19,22 +19,24 @@ function WorkspacePage({ authUser, onUserSync, onLogout }) {
     saveProfile,
   } = useWorkspaceProfile(authUser, onUserSync)
   const {
-    tasks,
-    draftTask,
-    setDraftTask,
-    isLoadingTasks,
-    isCreatingTask,
-    taskStatus,
-    createTask,
-  } = useTasks(authUser)
+    promptHistory,
+    promptDraft,
+    setPromptDraft,
+    selectedHistoryEntry,
+    isLoadingPromptHistory,
+    isGeneratingPrompt,
+    promptStatus,
+    selectHistoryEntry,
+    generatePrompt,
+  } = usePromptHistory(authUser)
 
   const firstName = (profile.fullName || authUser?.name || 'Creator')
     .trim()
     .split(' ')[0]
   const sidebarName = `${firstName.toLowerCase()}'s team`
   const initial = firstName.slice(0, 1).toUpperCase()
-  const recentProjects = tasks.slice(0, 4)
-  const hasRecentProjects = recentProjects.length > 0
+  const recentPrompts = promptHistory.slice(0, 4)
+  const hasRecentPrompts = recentPrompts.length > 0
 
   useEffect(() => {
     setActiveScreen(hasSubmittedProfile ? 'prompt' : 'form')
@@ -61,32 +63,32 @@ function WorkspacePage({ authUser, onUserSync, onLogout }) {
 
           <div className="workspace-sidebar-section">
             <span className="workspace-sidebar-label">Last Opened</span>
-            {isLoadingTasks ? (
-              <p>Loading projects...</p>
-            ) : hasRecentProjects ? (
+            {isLoadingPromptHistory ? (
+              <p>Loading history...</p>
+            ) : hasRecentPrompts ? (
               <div className="workspace-project-list">
-                {recentProjects.map((task) => (
+                {recentPrompts.map((entry) => (
                   <button
-                    key={task._id}
+                    key={entry._id}
                     type="button"
                     className="workspace-project-item"
-                    onClick={() => setDraftTask(task.title)}
+                    onClick={() => selectHistoryEntry(entry)}
                   >
-                    {task.title}
+                    {entry.prompt}
                   </button>
                 ))}
               </div>
             ) : (
-              <p>No Recent Projects</p>
+              <p>No saved prompts yet</p>
             )}
           </div>
 
           <div className="workspace-sidebar-section">
             <span className="workspace-sidebar-label">{sidebarName}</span>
             <p>
-              {hasRecentProjects
-                ? `${recentProjects.length} saved project${recentProjects.length > 1 ? 's' : ''}`
-                : 'No team projects yet'}
+              {hasRecentPrompts
+                ? `${promptHistory.length} saved prompt${promptHistory.length > 1 ? 's' : ''}`
+                : 'No prompt history yet'}
             </p>
           </div>
         </div>
@@ -95,10 +97,10 @@ function WorkspacePage({ authUser, onUserSync, onLogout }) {
           <span className="workspace-sidebar-label">Get started</span>
           <ul className="workspace-checklist">
             <li className="active">Enter the prompt</li>
-            <li>{showPromptPage ? 'Create your next project idea.' : 'Complete your workspace profile.'}</li>
-            <li>Generate site map</li>
-            <li>Add your branding</li>
-            <li>Export your project</li>
+            <li>{showPromptPage ? 'Generate and save your response.' : 'Complete your workspace profile.'}</li>
+            <li>Review saved history</li>
+            <li>Continue from your last session</li>
+            <li>Build your next idea</li>
           </ul>
         </div>
 
@@ -127,11 +129,14 @@ function WorkspacePage({ authUser, onUserSync, onLogout }) {
         {showPromptPage ? (
           <WorkspacePromptPage
             profile={profile}
-            draftTask={draftTask}
-            isCreatingTask={isCreatingTask}
-            taskStatus={taskStatus}
-            onDraftChange={setDraftTask}
-            onCreateTask={createTask}
+            promptDraft={promptDraft}
+            promptHistory={promptHistory}
+            selectedHistoryEntry={selectedHistoryEntry}
+            isGeneratingPrompt={isGeneratingPrompt}
+            promptStatus={promptStatus}
+            onPromptDraftChange={setPromptDraft}
+            onGeneratePrompt={generatePrompt}
+            onSelectHistoryEntry={selectHistoryEntry}
           />
         ) : (
           <WorkspaceProfileForm

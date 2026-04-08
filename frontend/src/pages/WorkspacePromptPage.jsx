@@ -2,20 +2,26 @@ import WorkspaceHomePanel from '../features/workspace/components/WorkspaceHomePa
 
 function WorkspacePromptPage({
   profile,
-  draftTask,
-  isCreatingTask,
-  taskStatus,
-  onDraftChange,
-  onCreateTask,
+  promptDraft,
+  promptHistory,
+  selectedHistoryEntry,
+  isGeneratingPrompt,
+  promptStatus,
+  onPromptDraftChange,
+  onGeneratePrompt,
+  onSelectHistoryEntry,
 }) {
   return (
     <WorkspaceHomePanel
       profile={profile}
-      draftTask={draftTask}
-      isCreatingTask={isCreatingTask}
-      taskStatus={taskStatus}
-      onDraftChange={onDraftChange}
-      onCreateTask={onCreateTask}
+      promptDraft={promptDraft}
+      promptHistory={promptHistory}
+      selectedHistoryEntry={selectedHistoryEntry}
+      isGeneratingPrompt={isGeneratingPrompt}
+      promptStatus={promptStatus}
+      onPromptDraftChange={onPromptDraftChange}
+      onGeneratePrompt={onGeneratePrompt}
+      onSelectHistoryEntry={onSelectHistoryEntry}
     />
   )
 }

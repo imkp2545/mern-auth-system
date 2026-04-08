@@ -11,18 +11,25 @@ const QUICK_STARTS = [
 
 function WorkspaceHomePanel({
   profile,
-  draftTask,
-  isCreatingTask,
-  taskStatus,
-  onDraftChange,
-  onCreateTask,
+  promptDraft,
+  promptHistory,
+  selectedHistoryEntry,
+  isGeneratingPrompt,
+  promptStatus,
+  onPromptDraftChange,
+  onGeneratePrompt,
+  onSelectHistoryEntry,
 }) {
   const firstName = (profile.fullName || 'there').trim().split(' ')[0]
 
   const handleSubmit = (event) => {
     event.preventDefault()
-    onCreateTask()
+    onGeneratePrompt()
   }
+
+  const selectedTimestamp = selectedHistoryEntry?.createdAt
+    ? new Date(selectedHistoryEntry.createdAt).toLocaleString()
+    : ''
 
   return (
     <section className="workspace-home-panel">
@@ -35,17 +42,18 @@ function WorkspaceHomePanel({
         <div className="workspace-task-input-wrap">
           <span className="workspace-task-plus">+</span>
           <input
+            id="workspace-prompt"
             type="text"
             placeholder="Ask SproutOS"
-            value={draftTask}
-            onChange={(event) => onDraftChange(event.target.value)}
+            value={promptDraft}
+            onChange={(event) => onPromptDraftChange(event.target.value)}
           />
           <button
             type="submit"
             className="workspace-task-submit"
-            disabled={isCreatingTask || !draftTask.trim()}
+            disabled={isGeneratingPrompt || !promptDraft.trim()}
           >
-            {isCreatingTask ? '...' : 'Send'}
+            {isGeneratingPrompt ? '...' : 'Send'}
           </button>
         </div>
       </form>
@@ -56,17 +64,40 @@ function WorkspaceHomePanel({
             key={item}
             type="button"
             className="workspace-suggestion-chip"
-            onClick={() => onDraftChange(item)}
+            onClick={() => onPromptDraftChange(item)}
           >
             {item}
           </button>
         ))}
       </div>
 
-      {taskStatus.message ? (
+      {promptStatus.message ? (
         <div className="workspace-task-status">
-          <StatusBanner status={taskStatus} />
+          <StatusBanner status={promptStatus} />
         </div>
+      ) : null}
+
+      {selectedHistoryEntry ? (
+        <section className="workspace-inline-output">
+          <div className="workspace-inline-output-head">
+            <span>Generated output</span>
+            {selectedTimestamp ? <small>{selectedTimestamp}</small> : null}
+          </div>
+
+          <div className="workspace-inline-output-body">
+            {selectedHistoryEntry.response}
+          </div>
+        </section>
+      ) : promptHistory.length === 0 ? (
+        <section className="workspace-inline-output workspace-inline-output-empty">
+          <div className="workspace-inline-output-head">
+            <span>Generated output</span>
+          </div>
+
+          <div className="workspace-inline-output-body">
+            Your generated response will appear here after you send a prompt.
+          </div>
+        </section>
       ) : null}
     </section>
   )
